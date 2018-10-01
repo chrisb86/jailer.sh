@@ -27,7 +27,8 @@
 
 iocage_ports_dir="/iocage/ports"
 iocage_zfs_dataset="zroot/iocage/jails"
-freebsd_release="11.2-RELEASE"
+freebsd_release="${freebsd_release:-11.2-RELEASE}"
+
 TODAY=$(date +%Y-%m-%d)
 
 jailer=`basename -- $0`
@@ -38,15 +39,16 @@ iocage_jail_dir=`zfs get mountpoint $iocage_zfs_dataset | cut -d " " -f 5`
 help () {
   echo "Usage: $jailer command {params}"
   echo
-  echo "update     Updates all jails base systems and their ports"
-  echo "upgrade    Upgrades all jails base systems and their ports to $freebsd_release"
+  echo "update            Updates all jails base systems and their ports."
+  echo "upgrade           Upgrades all jails base systems and their ports to given FreeBSD release."
+  echo "  -r RELEASE      Release that should be used for upgrade (default: $freebsd_release)."
+  echo ""
   echo "help       Show this screen"
 
   exit $1
 }
 
-# Update git repo and submodules
-# Usage: df_update
+# Usage: jailer_update
 jailer_update () {
   echo "### Updating jail $jail"
   iocage update $jail
@@ -58,8 +60,8 @@ jailer_update () {
   iocage exec $jail service -R
 }
 
-# Deploy files to ~
-# Usage: df_deploy
+
+# Usage: jailer_upgrade
 jailer_upgrade () {
   echo "### Updating jail $jail"
   iocage upgrade $jail -r $freebsd_release
@@ -100,6 +102,14 @@ case "$1" in
   ;;
   ######################## jailer.sh UPGRADE ########################
   upgrade)
+  shift; while getopts :r: arg; do case ${arg} in
+    r) release+=("$OPTARG");;
+    ?) help;;
+    :) help;;
+  esac; done; shift $(( ${OPTIND} - 1 ))
+
+  freebsd_release="${release:-11.2-RELEASE}"
+
   jailer_ports
   cd $iocage_jail_dir
 
