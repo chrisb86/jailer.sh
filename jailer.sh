@@ -25,23 +25,31 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+## Copy of ports for iocage jails
 iocage_ports_dir="/iocage/ports"
-iocage_zfs_dataset="zroot/iocage/jails"
-freebsd_release="${freebsd_release:-11.2-RELEASE}"
 
-TODAY=$(date +%Y-%m-%d)
+## Dataset for iocage Jails
+iocage_zfs_dataset="zroot/iocage/jails"
 
 jailer=`basename -- $0`
-iocage_jail_dir=`zfs get mountpoint $iocage_zfs_dataset | cut -d " " -f 5`
+
+# Exit with errormessage
+# Usage: exerr errormessage
+exerr () { echo -e "$*" >&2 ; exit 1; }
+
+jailer_usage_upgrade="Usage: $JAILer upgrade [-R FreeBSD-Release]"
+
+## Get mountpoint of iocage zfs dataset
+iocage_jail_dir=`zfs get -H -o value mountpoint $iocage_zfs_dataset`
 
 # Show help screen
 # Usage: help exitcode
 help () {
-  echo "Usage: $jailer command {params}"
+  echo "Usage: $JAILer command {params}"
   echo
   echo "update            Updates all jails base systems and their ports."
   echo "upgrade           Upgrades all jails base systems and their ports to given FreeBSD release."
-  echo "  -r RELEASE      Release that should be used for upgrade (default: $freebsd_release)."
+  echo "  [-r FreeBSD-Release]        Release that should be used for upgrades"
   echo ""
   echo "help       Show this screen"
 
@@ -50,38 +58,33 @@ help () {
 
 # Usage: jailer_update
 jailer_update () {
-  echo "### Updating jail $jail"
-  iocage update $jail
-  echo "### Restarting jail $jail"
-  iocage restart $jail
+  echo "### Updating jail $JAIL"
+  iocage update $JAIL
+  echo "### Restarting jail $JAIL"
+  iocage restart $JAIL
 
-  echo "### Updating ports of jail $jail"
-  iocage exec $jail portmaster -Bad
-  iocage exec $jail service -R
+  echo "### Updating ports of jail $JAIL"
+  iocage exec $JAIL portmaster -Bad
+  iocage exec $JAIL service -R
 }
-
 
 # Usage: jailer_upgrade
 jailer_upgrade () {
-  echo "### Updating jail $jail"
-  iocage upgrade $jail -r $freebsd_release
-  echo "### Restarting jail $jail"
-  iocage restart $jail
+  echo "### Updating jail $JAIL"
+  iocage upgrade $JAIL -r $freebsd_release
+  echo "### Restarting jail $JAIL"
+  iocage restart $JAIL
 
-  echo "### Updating ports of jail $jail"
-  iocage exec $jail pkg remove nullmailer
-  iocage exec $jail pkg autoremove
-  iocage exec $jail portmaster -afd
-  iocage exec $jail service -R
+  echo "### Updating ports of jail $JAIL"
+  iocage exec $JAIL pkg autoremove
+  iocage exec $JAIL portmaster -Bafd
+  iocage exec $JAIL service -R
 }
 
-jailer_snapshot () {
-  echo "### Creating snapshot of jail $jail"
-  zfs snapshot -r $iocage_zfs_dataset/$jail@$TODAY
-}
-jailer_ports () {
+# Usage: jailer_update_ports
+jailer_update_ports () {
   echo "### Updating ports tree"
-  portsnap -p $iocage_ports_dir fetch update
+  portsnap -p $iocage_ports_dir auto
 }
 
 case "$1" in
@@ -91,31 +94,31 @@ case "$1" in
   ;;
   ######################## jailer.sh UPDATE ########################
   update)
-  jailer_ports
+  jailer_update_ports
   cd $iocage_jail_dir
 
   for JAIL in *
   do
-    jailer_snapshot
+    iocage snapshot $JAIL
     jailer_update
   done
   ;;
   ######################## jailer.sh UPGRADE ########################
   upgrade)
   shift; while getopts :r: arg; do case ${arg} in
-    r) release+=("$OPTARG");;
-    ?) help;;
-    :) help;;
+    r) release=${OPTARG};;
+    ?) exerr ${jailer_usage_upgrade};;
+    :) exerr ${jailer_usage_upgrade};;
   esac; done; shift $(( ${OPTIND} - 1 ))
 
-  freebsd_release="${release:-11.2-RELEASE}"
+  freebsd_release="${release:-12.0-RELEASE}"
 
-  jailer_ports
+  jailer_update_ports
   cd $iocage_jail_dir
 
   for JAIL in *
   do
-    jailer_snapshot
+    iocage snapshot $JAIL
     jailer_upgrade
   done
   ;;
