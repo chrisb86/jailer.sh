@@ -27,9 +27,8 @@
 
 ## Copy of ports for iocage jails
 iocage_ports_dir="/iocage/ports"
-
-## Dataset for iocage Jails
-iocage_zfs_dataset="zroot/iocage/jails"
+freebsd_latest="12.1-RELEASE"
+jailer_conf_path="/usr/local/etc/jailer"
 
 jailer=`basename -- $0`
 
@@ -37,7 +36,16 @@ jailer=`basename -- $0`
 # Usage: exerr errormessage
 exerr () { echo -e "$*" >&2 ; exit 1; }
 
-jailer_usage_upgrade="Usage: $JAILer upgrade [-R FreeBSD-Release]"
+jailer_usage_bootstrap="Usage: $jailer bootstrap -p ZPOOL"
+jailer_usage_update="Usage: $jailer update [-j JAIL] [-p] [-s]"
+jailer_usage_upgrade="Usage: $jailer upgrade [-j JAIL] [-r RELEASE]"
+jailer_usage_create="Usage: $jailer create -n NAME [-r RELEASE] [-p PROPERTIES] [-f FLAVOUR]"
+
+## Get the active pool from iocage
+iocage_pool=`iocage get -p`
+
+## Dataset for iocage Jails
+iocage_zfs_dataset="$iocage_pool/iocage/jails"
 
 ## Get mountpoint of iocage zfs dataset
 iocage_jail_dir=`zfs get -H -o value mountpoint $iocage_zfs_dataset`
@@ -45,46 +53,78 @@ iocage_jail_dir=`zfs get -H -o value mountpoint $iocage_zfs_dataset`
 # Show help screen
 # Usage: help exitcode
 help () {
-  echo "Usage: $JAILer command {params}"
+  echo "Usage: $jailer command {params}"
   echo
-  echo "update            Updates all jails base systems and their ports."
-  echo "upgrade           Upgrades all jails base systems and their ports to given FreeBSD release."
-  echo "  [-r FreeBSD-Release]        Release that should be used for upgrades"
-  echo ""
-  echo "help       Show this screen"
+  echo "bootstrap         Sets up  the jail host for usage with iocage and $jailer."
+  echo "  -p ZPOOL            Name of the zpool that iocage should use."
+  echo "update            Updates a jails ports."
+  echo "  [-j JAIL]           Jail that should be updated. Otherwise all jails will be processed."
+  echo "  [-s]                Also update FreeBsd in jail(s)."
+  echo "upgrade           Upgrades a jails base systems and its ports to given FreeBSD release."
+  echo "  [-j JAIL]           Jail that should be upgraded. Otherwise all jails will be processed."
+  echo "  [-r RELEASE]    Release that should be used for upgrades."
+  echo "create            Creates a jail."
+  echo "  -n NAME             Name of the jail that should be created."
+  echo "  [-r RELEASE]        Release that should be used for jail creation"
+  echo "  [-p PROPERTIES]     iocage properties that should be applied"
+  echo "  [-f FLAVOUR]        Flavour that should be applied"
+  echo "help              Show this screen"
 
   exit $1
 }
 
+# Update the jail's release, restart the jail, update jail's ports and restart services
 # Usage: jailer_update
 jailer_update () {
-  echo "### Updating jail $JAIL"
-  iocage update $JAIL
-  echo "### Restarting jail $JAIL"
-  iocage restart $JAIL
 
-  echo "### Updating ports of jail $JAIL"
-  iocage exec $JAIL portmaster -Bad
-  iocage exec $JAIL service -R
+  if [ "$update_system" = true ]; then
+    echo "### Updating jail $jail"
+    iocage update $jail
+
+    echo "### Restarting jail $jail"
+    iocage restart $jail
+  fi
+
+  echo "### Updating ports of jail $jail"
+  iocage exec $jail portmaster -Bad
+  iocage exec $jail service -R
 }
+
+# Upgrade the jail's release, restart the jail, autoremove ports, recompile jail's ports and restart services
 
 # Usage: jailer_upgrade
 jailer_upgrade () {
-  echo "### Updating jail $JAIL"
-  iocage upgrade $JAIL -r $freebsd_release
-  echo "### Restarting jail $JAIL"
-  iocage restart $JAIL
+  echo "### Upgrading jail $jail"
+  iocage upgrade $jail -r $freebsd_release
 
-  echo "### Updating ports of jail $JAIL"
-  iocage exec $JAIL pkg autoremove
-  iocage exec $JAIL portmaster -Bafd
-  iocage exec $JAIL service -R
+  echo "### Restarting jail $jail"
+  iocage restart $jail
+
+  echo "### Updating ports of jail $jail"
+  iocage exec $jail pkg autoremove
+  iocage exec $jail portmaster -Bafd
+  iocage exec $jail service -R
 }
 
+# Update the specified iocage release or fetch it if if doesn't exist
+# Usage: jailer_update_base [XX.X-RELEASE]
+jailer_update_base () {
+  release="${1:-LATEST}"
+  iocage fetch -r $release
+}
+
+# Update the iocage ports tree
 # Usage: jailer_update_ports
 jailer_update_ports () {
   echo "### Updating ports tree"
   portsnap -p $iocage_ports_dir auto
+}
+
+# Strip comments, blank lines and whitespace from a file
+# Usage: jailer_cleanfile FILE
+jailer_cleanfile () {
+  file=$1
+  sed 's/[[:space:]]*#.*//;/^[[:space:]]*$/d' "$file"
 }
 
 case "$1" in
@@ -92,35 +132,175 @@ case "$1" in
   help)
   help 0
   ;;
+  ######################## jailer.sh BOOTSTRAP ########################
+  bootstrap)
+  shift; while getopts :p: arg; do case ${arg} in
+    p) zpool=${OPTARG};;
+    ?) exerr ${jailer_usage_bootstrap};;
+    :) exerr ${jailer_usage_bootstrap};;
+  esac; done; shift $(( ${OPTIND} - 1 ))
+
+  if [ -z "$zpool" ]; then exerr $jailer_usage_bootstrap; fi
+
+  portsnap auto
+
+  echo "### Installing ccache"
+  cd /usr/ports/devel/ccache
+  make install clean
+
+  echo "### Installing portmaster"
+  cd /usr/ports/ports-mgmt/portmaster
+  make install clean
+
+  echo "### Installing rsync"
+  portmaster -Bd net/rsync
+
+  echo "### Installing iocage"
+  portmaster -Bd sysutils/iocage
+
+  echo "### Activating ZPOOL $zpool for iocage."
+  iocage activate $zpool
+
+  jailer_update_base
+  jailer_update_ports
+
+  echo "Your host is now ready to be used with $jailer."
+  echo "See _$jailer help_ for usage instructions."
+  ;;
   ######################## jailer.sh UPDATE ########################
   update)
-  jailer_update_ports
-  cd $iocage_jail_dir
+  shift; while getopts :j:s arg; do case ${arg} in
+    j) jail=${OPTARG};;
+    s) update_system=true;;
+    ?) exerr ${jailer_usage_update};;
+    :) exerr ${jailer_usage_update};;
+  esac; done; shift $(( ${OPTIND} - 1 ))
 
-  for JAIL in *
-  do
-    iocage snapshot $JAIL
+  jailer_update_ports
+
+  ## Stop monit
+  /usr/sbin/service monit stop
+
+  if [ -n "$jail" ]; then
+    iocage snapshot $jail
     jailer_update
-  done
+  else
+    cd $iocage_jail_dir
+    for jail in *
+    do
+      iocage snapshot $jail
+      jailer_update
+    done
+  fi
+
+  ## Start monit
+  /usr/sbin/service monit start
   ;;
   ######################## jailer.sh UPGRADE ########################
   upgrade)
-  shift; while getopts :r: arg; do case ${arg} in
+  shift; while getopts :j:r: arg; do case ${arg} in
+    j) jail=${OPTARG};;
     r) release=${OPTARG};;
     ?) exerr ${jailer_usage_upgrade};;
     :) exerr ${jailer_usage_upgrade};;
   esac; done; shift $(( ${OPTIND} - 1 ))
 
-  freebsd_release="${release:-12.0-RELEASE}"
+  freebsd_release="${release:-$freebsd_latest}"
+
+  jailer_update_base
 
   jailer_update_ports
-  cd $iocage_jail_dir
 
-  for JAIL in *
-  do
-    iocage snapshot $JAIL
+  if [ -n "$jail" ]; then
+    iocage snapshot $jail
     jailer_upgrade
-  done
+  else
+    cd $iocage_jail_dir
+    for jail in *
+    do
+      iocage snapshot $jail
+      jailer_upgrade
+    done
+  fi
+  ;;
+  ######################## jailer.sh CREATE ########################
+  create)
+  shift; while getopts :r:b:p:n:f: arg; do case ${arg} in
+    r) release=${OPTARG};;
+    b) update_base=true;;
+    p) jail_properties="${jail_properties} ${OPTARG}";;
+    n) jail_name=${OPTARG};;
+    f) jail_flavour=${OPTARG};;
+    ?) exerr ${jailer_usage_create};;
+    :) exerr ${jailer_usage_create};;
+  esac; done; shift $(( ${OPTIND} - 1 ))
+
+  freebsd_release="${release:-LATEST}"
+
+  if [ "$update_base" = true ]; then
+    jailer_update_base
+  fi
+
+  if [ -z ${jail_name+x} ]; then exerr $jailer_usage_create; fi
+
+  jail=$jail_name
+  jail_root="$iocage_jail_dir/$jail/root"
+  jail_pkglist=""
+
+  ## Check if jail should be flavoured
+  if [ -n $jail_flavour ]; then
+
+    ## Set some paths
+
+    jail_flavour_dir="$jailer_conf_path/flavours/$jail_flavour"
+
+    ## Process the flavours jail.cfg
+    if [ -f $jail_flavour_dir/jail.cfg ]; then
+      ## load jail.cfg line by line to variable and skip comments, blank lines and whitespace
+      jail_properties_cfg=`jailer_cleanfile "$jail_flavour_dir/jail.cfg"`
+
+      ## Append loaded properties to these that where passed by cli
+      jail_properties="${jail_properties_cfg} ${jail_properties}"
+    fi
+
+    ## Process the flavour's pkgs.json
+    if [ -f $jail_flavour_dir/pkgs.json ]; then
+      jail_pkglist="-p $jail_flavour_dir/pkgs.json"
+    fi
+
+  fi
+
+  ## Create the jail
+  iocage create -n $jail_name -r $freebsd_release ${jail_pkglist} ${jail_properties} || exit 1
+
+  ## If we have passed a flavour
+  if [ -n $jail_flavour ]; then
+
+    ## Process the flavour's fstab.cfg and create the mountpoints
+    if [ -f $jail_flavour_dir/fstab.cfg ]; then
+      jailer_cleanfile "$jail_flavour_dir/fstab.cfg" | while IFS='' read -r line; do
+        # Get mountpoint from fstab line
+        line_mountpoint=`echo $line | awk '{print $2}'`
+        # Create mountpoint
+        iocage exec $jail "mkdir -p $line_mountpoint"
+        # Add line to jail's fstab
+        iocage fstab -a $jail "$line"
+      done
+    fi
+
+    ## Sync the system files in flavour to the jail's root
+    echo "### Copying system files from flavour $jail_flavour to $jail's root."
+
+    # What should be ignored
+    sync_exclude="fstab.cfg pkgs.json jail.cfg .git/ .gitignore .gitmodules README.md .DS_Store"
+
+    for exclude_item in ${sync_exclude}
+    do
+      rsync_exclude=${rsync_exclude}" --exclude=$exclude_item"
+    done
+
+    rsync -ar $jail_flavour_dir/ $jail_root/ $rsync_exclude
+  fi
   ;;
   *)
   help 1

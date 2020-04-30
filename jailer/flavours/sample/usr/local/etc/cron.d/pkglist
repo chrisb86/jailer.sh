@@ -1,0 +1,1 @@
+0 0 * * * 		root pkg prime-origins > /var/backups/pkg.list
