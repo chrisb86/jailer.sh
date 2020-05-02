@@ -188,8 +188,10 @@ case "$1" in
     cd $iocage_jail_dir
     for jail in *
     do
-      iocage snapshot $jail
-      jailer_update
+      if [ -d "$jail" ]; then
+        iocage snapshot $jail
+        jailer_update
+      fi
     done
   fi
 
@@ -218,8 +220,10 @@ case "$1" in
     cd $iocage_jail_dir
     for jail in *
     do
-      iocage snapshot $jail
-      jailer_upgrade
+      if [ -d "$jail" ]; then
+        iocage snapshot $jail
+        jailer_upgrade
+      fi
     done
   fi
   ;;
