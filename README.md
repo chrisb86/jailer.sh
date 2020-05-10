@@ -27,6 +27,24 @@ Jost copy _jailer.sh_ anywhere in your path and the „jailer" direcory to _/usr
 
 Flavours are skeleton directories for jails with the ability to configure the jail. The flavours live under _/usr/local/etc/jailer/flavours_ by default.
 
+This is the direcotry listing of the sample flavour that comes with jailer:
+  ```
+  /usr/local/etc/jailer/flavours/sample/
+  ├── bootstrap.sh
+  ├── etc
+  │   ├── make.conf
+  │   ├── periodic.conf
+  │   └── rc.conf.d
+  │       └── ipfw
+  ├── fstab.cfg
+  ├── jail.cfg
+  ├── pkgs.json
+  └── usr
+      └── local
+          └── etc
+              └── cron.d
+                  └── pkglist
+  ```
 A flavour can consist of the following parts (but all of them are optional).
 
 ### jail.cfg
