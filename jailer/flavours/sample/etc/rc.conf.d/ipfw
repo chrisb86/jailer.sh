@@ -1,0 +1,9 @@
+## Enable ipfw in jail and apply some basic rules
+## To open ports pass it t
+
+firewall_enable="YES"
+firewall_quiet="YES"
+firewall_type="workstation"
+firewall_myservices=""        # Ports to open (eg. 53/tcp 53/udp)
+firewall_allowservices="any"  # Don't restrict outgoing traffic
+firewall_logdeny="YES"
