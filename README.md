@@ -14,7 +14,7 @@ Jost copy _jailer.sh_ anywhere in your path and the „jailer" direcory to _/usr
     [-s]                Also update FreeBSD in jail(s).
   upgrade           Upgrades a jails base systems and its ports to given FreeBSD release.
     [-j JAIL]           Jail that should be upgraded. Otherwise all jails will be processed.
-    [-r RELEASE]    Release that should be used for upgrades.
+    [-r RELEASE]        Release that should be used for upgrades.
   create            Creates a jail.
     -n NAME             Name of the jail that should be created.
     [-r RELEASE]        Release that should be used for jail creation
