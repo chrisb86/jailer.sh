@@ -2,7 +2,7 @@ _jailer.sh_ is a wrapper script for managing iocage jails on FreeBSD. It can upd
 
 Jost copy _jailer.sh_ anywhere in your path and the „jailer" direcory to _/usr/local/etc_. See _/usr/local/etc/jailer/flavours_ for a sample jail. You can put system files in the flavours that should be copied to the jail, you can specify fstab entries that should be enabled in the jail and you can define programs that will be installed in the jail. See _jail.cfg_ for an example for iocage properties that are set when the jail will be created.
 
-##Usage
+## Usage
 
   ```sh
 Usage: jailer.sh command {params}
@@ -23,13 +23,13 @@ create            Creates a jail.
 help              Show this screen
   ```
 
-##Flavours
+## Flavours
 
 Flavours are skeleton directories for jails with the ability to configure the jail. The flavours live under _/usr/local/etc/jailer/flavours_ by default.
 
 A flavour can consist of the following parts (but all of them are optional).
 
-###jail.cfg
+### jail.cfg
 
 The jail config contains configuration parametres of iocage and uses it for the jail. These can be eg. networking settings or autoboot.
 
