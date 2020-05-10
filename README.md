@@ -5,22 +5,22 @@ Jost copy _jailer.sh_ anywhere in your path and the „jailer" direcory to _/usr
 ## Usage
 
   ```sh
-Usage: jailer.sh command {params}
+  Usage: jailer.sh command {params}
 
-bootstrap         Sets up  the jail host for usage with iocage and jailer.sh.
-  -p ZPOOL            Name of the zpool that iocage should use.
-update            Updates a jails ports.
-  [-j JAIL]           Jail that should be updated. Otherwise all jails will be processed.
-  [-s]                Also update FreeBSD in jail(s).
-upgrade           Upgrades a jails base systems and its ports to given FreeBSD release.
-  [-j JAIL]           Jail that should be upgraded. Otherwise all jails will be processed.
-  [-r RELEASE]    Release that should be used for upgrades.
-create            Creates a jail.
-  -n NAME             Name of the jail that should be created.
-  [-r RELEASE]        Release that should be used for jail creation
-  [-p PROPERTIES]     iocage properties that should be applied
-  [-f FLAVOUR]        Flavour that should be applied
-help              Show this screen
+  bootstrap         Sets up  the jail host for usage with iocage and jailer.sh.
+    -p ZPOOL            Name of the zpool that iocage should use.
+  update            Updates a jails ports.
+    [-j JAIL]           Jail that should be updated. Otherwise all jails will be processed.
+    [-s]                Also update FreeBSD in jail(s).
+  upgrade           Upgrades a jails base systems and its ports to given FreeBSD release.
+    [-j JAIL]           Jail that should be upgraded. Otherwise all jails will be processed.
+    [-r RELEASE]    Release that should be used for upgrades.
+  create            Creates a jail.
+    -n NAME             Name of the jail that should be created.
+    [-r RELEASE]        Release that should be used for jail creation
+    [-p PROPERTIES]     iocage properties that should be applied
+    [-f FLAVOUR]        Flavour that should be applied
+  help              Show this screen
   ```
 
 ## Flavours
@@ -35,11 +35,11 @@ The jail config contains configuration parametres of iocage and uses it for the 
 
 A simple _jail.cfg_ can look like this:
   ```sh
-## jail.cfg
-boot=on
-allow_raw_sockets="1"
-ip4_addr=10.0.3.254/24
-vnet=on
+  ## jail.cfg
+  boot=on
+  allow_raw_sockets="1"
+  ip4_addr=10.0.3.254/24
+  vnet=on
   ```
 ### pkgs.json
 
@@ -48,13 +48,13 @@ The _pkgs.json_ file defines the packages that should be installed after jail cr
 A _pkgs.json_ can look like this:
 
   ```json
-{
-  pkgs": [
-    "portmaster",
-    "ccache",
-    "vim-console"
-  ]
-}
+  {
+    pkgs": [
+      "portmaster",
+      "ccache",
+      "vim-console"
+    ]
+  }
   ```
 
 ### fstab.cfg
@@ -79,17 +79,16 @@ _bootstrap.sh_ is a simple shell script that will be run from inside the jail af
 A sample file looks like this:
 
   ```sh
-#!/bin/sh
+  #!/bin/sh
 
-## Disable adjkerntz in jail
-sed -i .tmp -e '/adjkerntz/ s/^#*/#/' /etc/crontab
+  ## Disable adjkerntz in jail
+  sed -i .tmp -e '/adjkerntz/ s/^#*/#/' /etc/crontab
 
-## Disable crash dumps
-sysrc dumpdev="NO"
+  ## Disable crash dumps
+  sysrc dumpdev="NO"
 
-## Set alias for root to you mail address
-echo root: user@example.org >> /etc/aliases
-
+  ## Set alias for root to your mail address
+  echo root: user@example.org >> /etc/aliases
   ```
 
 ### Other files and directories
