@@ -296,7 +296,7 @@ case "$1" in
     echo "### Copying system files from flavour $jail_flavour to $jail's root."
 
     # What should be ignored
-    sync_exclude="fstab.cfg pkgs.json jail.cfg .git/ .gitignore .gitmodules README.md .DS_Store"
+    sync_exclude="fstab.cfg pkgs.json jail.cfg .git/ .gitignore .gitmodules README.md .DS_Store bootstrap.sh"
 
     for exclude_item in ${sync_exclude}
     do
@@ -304,6 +304,16 @@ case "$1" in
     done
 
     rsync -ar $jail_flavour_dir/ $jail_root/ $rsync_exclude
+
+    if [ -f $jail_flavour_dir/bootstrap.sh ]; then
+      ## Sync the system files in flavour to the jail's root
+      echo "### Running bootstrapping script."
+
+      cp $jail_flavour_dir/bootstrap.sh $jail_root/tmp/
+
+      iocage exec $jail "/tmp/bootstrap.sh"
+      iocage exec $jail "rm /tmp/bootstrap.sh"
+    fi
   fi
   ;;
   *)
