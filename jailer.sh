@@ -62,7 +62,7 @@ help () {
   echo "  [-s]                Also update FreeBsd in jail(s)."
   echo "upgrade           Upgrades a jails base systems and its ports to given FreeBSD release."
   echo "  [-j JAIL]           Jail that should be upgraded. Otherwise all jails will be processed."
-  echo "  [-r RELEASE]    Release that should be used for upgrades."
+  echo "  [-r RELEASE]        Release that should be used for upgrades."
   echo "create            Creates a jail."
   echo "  -n NAME             Name of the jail that should be created."
   echo "  [-r RELEASE]        Release that should be used for jail creation"
