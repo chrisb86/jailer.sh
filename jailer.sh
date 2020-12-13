@@ -27,7 +27,7 @@
 
 ## Copy of ports for iocage jails
 iocage_ports_dir="/iocage/ports"
-freebsd_latest="12.1-RELEASE"
+freebsd_latest="12.2-RELEASE"
 jailer_conf_path="/usr/local/etc/jailer"
 
 jailer=`basename -- $0`
